@@ -119,7 +119,7 @@ class Logger():
             plt.xlim(left=time_str[0] + datetime.timedelta(days=-1), right=time_str[-1] + datetime.timedelta(days=1))
             ax = plt.gca()
             date_format = mpl.dates.DateFormatter("%m-%d")
-            ax.xaxis.set_major_formatter(date_format)  # 控制x轴显示日期的间隔天数（如一周7天）
+            ax.xaxis.set_major_formatter(date_format) 
 
             xlocator = mpl.ticker.MultipleLocator(1)
             ylocator = mpl.ticker.MultipleLocator(25)
