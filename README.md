@@ -27,10 +27,10 @@ To train and evaluate models, please run the following command:
 | Pre-train    | PEMSBAY         | ./train.sh gwavenet PEMSBAY NA 12 NA config1 128 2 2030                                     |
 | Pre-train    | BJAir           | ./train.sh gwavenet BJAir PM25 12 NA config1 128 2 2030                                     |
 | Pre-train    | GZAir           | ./train.sh gwavenet GZAir PM25 12 NA config1 128 2 2030                                     |
-| Forecasting  | PEMS03 | ./train.sh stdiffusionfore PEMS03 NA 24 gwavenet_NA_20260108T035504 config_PEMS03 64 2 2030        |
-| Forecasting  | PEMSBAY | ./train.sh stdiffusionfore PEMSBAY NA 24 **NAME_OF_PRETRAIN** config_PEMSBAY 64 3 2030      |
-| Forecasting  | BJAir | ./train.sh stdiffusionfore BJAir PM25 24 **NAME_OF_PRETRAIN** config_BJAir 64 1 2030        |
-| Forecasting  | GZAir | ./train.sh stdiffusionfore GZAir PM25 24 **NAME_OF_PRETRAIN** config_GZAir 64 1 2030        |
+| Forecasting  | PEMS03 | ./train.sh morsediffusionfore PEMS03 NA 24 gwavenet_NA_20260108T035504 config_PEMS03 64 2 2030        |
+| Forecasting  | PEMSBAY | ./train.sh morsediffusionfore PEMSBAY NA 24 **NAME_OF_PRETRAIN** config_PEMSBAY 64 3 2030      |
+| Forecasting  | BJAir | ./train.sh morsediffusionfore BJAir PM25 24 **NAME_OF_PRETRAIN** config_BJAir 64 1 2030        |
+| Forecasting  | GZAir | ./train.sh morsediffusionfore GZAir PM25 24 **NAME_OF_PRETRAIN** config_GZAir 64 1 2030        |
 | Kriging      | PEMS03 | ./train.sh stdiffusion PEMS03 NA 12 **NAME_OF_PRETRAIN** config_PEMS03 64 2 2030            |
 | Kriging      | PEMSBAY | ./train.sh stdiffusion PEMSBAY NA 12 **NAME_OF_PRETRAIN** config_PEMSBAY 64 3 2030          |
 | Kriging      | BJAir | ./train.sh stdiffusion BJAir PM25 12 **NAME_OF_PRETRAIN** config_BJAir 64 6 2030            |
@@ -54,7 +54,7 @@ The extrapolation results, ground truth, and the uncertainty estimates (if appli
 
 
 nohup python train.py \
-  --model stdiffusionfore \
+  --model morsediffusionfore \
   --dataset_mode PEMS03 \
   --pred_attr NA \
   --enable_val \
@@ -113,7 +113,7 @@ nohup python train.py \
 > logs/train_gwavenet_PEMS03.out &
 
 nohup python train.py \
-  --model stdiffusionfore \
+  --model morsediffusionfore \
   --dataset_mode PEMS03 \
   --pred_attr NA \
   --enable_val \
@@ -127,7 +127,7 @@ nohup python train.py \
   --num_train_target 3 \
   --num_threads 4 \
   --batch_size 64 \
-> logs/train_stdiffusionfore_PEMS03.out  &
+> logs/train_morsediffusionfore_PEMS03.out  &
 
 ```
 
@@ -153,13 +153,13 @@ nohup python train.py \
 > logs/train_gwavenet_BJAir.out &
 
 nohup python train.py \
-  --model stdiffusionfore \
+  --model morsediffusionfore \
   --dataset_mode BJAir \
   --pred_attr PM25 \
   --enable_val \
   --gpu_ids 1 \
   --config config_BJAir \
-  --pretrain gwavenet_PM25_20260304T100442 \
+  --pretrain gwavenet_PM25_20260724T143731 \
   --save_best \
   --t_len 24 \
   --seed 2030 \
@@ -167,7 +167,7 @@ nohup python train.py \
   --num_train_target 3 \
   --num_threads 4 \
   --batch_size 64 \
-> logs/train_stdiffusionfore_BJAir.out  &
+> logs/train_morsediffusionfore_BJAir.out  &
 
 ```
 
@@ -193,7 +193,7 @@ nohup python train.py \
 > logs/train_gwavenet_GZAir.out &
 
 nohup python train.py \
-  --model stdiffusionfore \
+  --model morsediffusionfore \
   --dataset_mode GZAir \
   --pred_attr PM25 \
   --enable_val \
@@ -207,7 +207,7 @@ nohup python train.py \
   --num_train_target 3 \
   --num_threads 4 \
   --batch_size 64 \
-> logs/train_stdiffusionfore_GZAir.out  &
+> logs/train_smorsediffusionfore_GZAir.out  &
 
 ```
 
@@ -232,7 +232,7 @@ nohup python train.py \
 > logs/train_gwavenet_PEMSBAY.out &
 
 nohup python train.py \
-  --model stdiffusionfore \
+  --model morsediffusionfore \
   --dataset_mode PEMSBAY \
   --pred_attr NA \
   --enable_val \
@@ -246,6 +246,6 @@ nohup python train.py \
   --num_train_target 3 \
   --num_threads 4 \
   --batch_size 64 \
-> logs/train_stdiffusionfore_PEMSBAY.out  &
+> logs/train_morsediffusionfore_PEMSBAY.out  &
 
 ```

@@ -58,6 +58,8 @@ if __name__ == '__main__':
 
             old_phase = model.opt.phase
             model.opt.phase = 'test' 
+
+            #! If you train the base gwnet model, please comment these two lines
             if 'CRPS' not in model.metric_names:
                 model.metric_names.append('CRPS')
 
@@ -72,6 +74,8 @@ if __name__ == '__main__':
             visualizer.print_current_metrics(epoch, total_iters, metrics, t_val)
 
             model.opt.phase = old_phase
+
+            #! If you train the base gwnet model, please change from CRPS to MAE
 
             # if opt.save_best and best_metric > metrics['MAE']:
             if opt.save_best and best_metric > metrics['CRPS']:
