@@ -200,7 +200,13 @@ class morsediffusionForeModel(BaseModel):
                 chord_gap=10.0,
             )
 
-            results, crit_edges, crit_nodes = run_complete_pipeline_with_visuals(G, max_dimension=2, seed=42)
+            results, crit_edges, crit_nodes = run_complete_pipeline_with_visuals(
+                G,
+                max_dimension=2,
+                seed=self.opt.morse_seed,
+                score_mode=self.opt.morse_score,
+                noise_scale=self.opt.morse_noise_scale,
+            )
             # crit = identify_critical_cells_from_attrs(G, faces = None, node_attr = "f", edge_attr = "f")
             # crit_nodes = {cell for (cell, _, dim) in crit if dim == 0}
             # crit_edges = {canon_edge(*cell) for (cell, _, dim) in crit if dim == 1}

@@ -360,3 +360,50 @@ nohup python analyze_morse_variants.py \
   > logs/analyze_all_morse_variants.out 2>&1 &
 
 ```
+
+
+## test the choice of discrete morse function
+
+``` bash
+nohup python train.py \
+  --model morsediffusionfore \
+  --dataset_mode GZAir \
+  --pred_attr PM25 \
+  --enable_val \
+  --gpu_ids 1 \
+  --config config_GZAir \
+  --pretrain gwavenet_PM25_20260725T075728 \
+  --save_best \
+  --t_len 24 \
+  --seed 2030 \
+  --morse_seed 42 \
+  --morse_score degree \
+  --morse_noise_scale 0.5 \
+  --eval_epoch_freq 5 \
+  --num_train_target 3 \
+  --num_threads 4 \
+  --batch_size 64 \
+> logs/train_GZAir_degree_seed2030.out 2>&1 &
+```
+
+``` bash
+nohup python train.py \
+  --model morsediffusionfore \
+  --dataset_mode GZAir \
+  --pred_attr PM25 \
+  --enable_val \
+  --gpu_ids 3 \
+  --config config_GZAir \
+  --pretrain gwavenet_PM25_20260725T075728 \
+  --save_best \
+  --t_len 24 \
+  --seed 2030 \
+  --morse_seed 42 \
+  --morse_score median_degree \
+  --morse_noise_scale 0.5 \
+  --eval_epoch_freq 5 \
+  --num_train_target 3 \
+  --num_threads 4 \
+  --batch_size 64 \
+> logs/train_GZAir_median_degree_seed2030.out 2>&1 &
+```

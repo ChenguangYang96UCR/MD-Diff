@@ -455,17 +455,59 @@ def build_clique_complex(G, max_dimension=2):
     # print('this is the complex dict\n', complex_dict)
     return complex_dict
 
-def initialize_vertex_weights(G, seed=42):
-    """g(v) = deg_max - degree(v) + ε (low weights for high-degree vertices)."""
-    np.random.seed(seed)
-    degrees = dict(G.degree())
-    max_degree = max(degrees.values())
+def initialize_vertex_weights(
+    G,
+    seed=42,
+    score_mode="degree",
+    noise_scale=0.5,
+):
+    """
+    Construct vertex weights for the discrete Morse function.
 
-    g = {}
-    for v in G.nodes():
-        epsilon = np.random.uniform(0, 0.5)
-        g[v] = max_degree - degrees[v] + epsilon
-    return g
+    score_mode:
+        degree:
+            f(v) = degree(v) + epsilon
+
+        median_degree:
+            f(v) = median_degree(G) + degree(v) + epsilon
+
+    epsilon ~ Uniform(0, noise_scale)
+    """
+    rng = np.random.default_rng(seed)
+
+    degrees = dict(G.degree())
+    degree_values = np.asarray(
+        list(degrees.values()),
+        dtype=np.float64,
+    )
+    median_degree = float(np.median(degree_values))
+
+    vertex_weights = {}
+
+    for v in sorted(G.nodes()):
+        epsilon = float(rng.uniform(0.0, noise_scale))
+
+        if score_mode == "degree":
+            score = float(degrees[v]) + epsilon
+
+        elif score_mode == "median_degree":
+            score = median_degree + float(degrees[v]) + epsilon
+
+        else:
+            raise ValueError(
+                f"Unknown score_mode: {score_mode}. "
+                "Expected 'degree' or 'median_degree'."
+            )
+
+        vertex_weights[v] = score
+
+    print(
+        f"[Morse] score_mode={score_mode}, "
+        f"seed={seed}, noise_scale={noise_scale}, "
+        f"median_degree={median_degree:.4f}"
+    )
+
+    return vertex_weights
 
 def get_faces(simplex, dimension, verbose=False):
     """Get all faces of simplex with specified dimension.
@@ -593,7 +635,13 @@ def construct_gradient_vector_field(complex_dict, f, Flag, max_dimension=1):
     # print("gradient pairs:", gradient_pairs)  # enable for debugging
     return gradient_pairs, paired_with
 
-def run_complete_pipeline_with_visuals(G, max_dimension=2, seed=42):
+def run_complete_pipeline_with_visuals(
+    G,
+    max_dimension=2,
+    seed=42,
+    score_mode="degree",
+    noise_scale=0.5,
+):
     """Complete pipeline: Morse function → gradient field → visualizations [currently commented out but feel free to uncomment]."""
 
     # Original pipeline
@@ -603,7 +651,12 @@ def run_complete_pipeline_with_visuals(G, max_dimension=2, seed=42):
         if p in complex_dict:
             print(f" Dimension {p}: {len(complex_dict[p])} simplices")
 
-    g = initialize_vertex_weights(G, seed)
+    g = initialize_vertex_weights(
+        G,
+        seed=seed,
+        score_mode=score_mode,
+        noise_scale=noise_scale,
+    )
     # print(f" Weight range: [{min(g.values()):.3f}, {max(g.values()):.3f}]")
 
     f, Flag = construct_discrete_morse_function(G, complex_dict, g, max_dimension)
@@ -872,8 +925,8 @@ def get_critical_path(results):
                 a,
                 b,
                 results,
-                mode="pairing",
-                enforce_f=True,
+                mode="relaxed",
+                enforce_f=False,
                 eps=0.0,
             )
 
@@ -891,8 +944,8 @@ def get_critical_path(results):
                     max_dimension=max(
                         results["complex"].keys()
                     ),
-                    mode="pairing",
-                    enforce_f=True,
+                    mode="relaxed",
+                    enforce_f=False,
                     eps=0.0,
                 )
 
@@ -909,8 +962,8 @@ def get_critical_path(results):
                     max_dimension=max(
                         results["complex"].keys()
                     ),
-                    mode="pairing",
-                    enforce_f=True,
+                    mode="relaxed",
+                    enforce_f=False,
                     eps=0.0,
                 )
 

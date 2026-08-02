@@ -46,6 +46,21 @@ class BaseOptions():
         parser.add_argument('--verbose', action='store_true', help='if specified, print more debugging information')
         parser.add_argument('--seed', type=int, default=2023, help='random seed for initialization')
         parser.add_argument('--enable_visual', action='store_true', help='enable visualization')
+        parser.add_argument(
+            "--morse_score",
+            type=str,
+            default="degree",
+            choices=["degree", "median_degree"],
+            help="Vertex scoring rule used to construct the Morse function",
+        )
+
+        parser.add_argument(
+            "--morse_noise_scale",
+            type=float,
+            default=0.5,
+            help="Upper bound of the uniform vertex tie-breaking noise",
+        )
+
         # add you customized parameters below
         self.initialized = True
         return parser
