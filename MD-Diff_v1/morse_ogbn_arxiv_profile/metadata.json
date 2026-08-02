@@ -1,0 +1,62 @@
+{
+  "dataset": "ogbn-arxiv",
+  "root": "dataset/ogb",
+  "morse_seed": 42,
+  "path_seed": 2026,
+  "sample_pairs": 1000,
+  "eps": 0.0,
+  "max_steps": 10000,
+  "path_configs": [
+    [
+      "pairing",
+      true
+    ],
+    [
+      "pairing",
+      false
+    ],
+    [
+      "relaxed",
+      true
+    ],
+    [
+      "relaxed",
+      false
+    ]
+  ],
+  "official_directed_nodes": 169343,
+  "undirected_unique_edges": 1157799,
+  "bfs_seed_node": 1353,
+  "sizes": [
+    1000,
+    5000,
+    10000,
+    25000,
+    50000,
+    169343
+  ],
+  "load_stage": {
+    "stage": "load_ogb",
+    "seconds": 0.12712588906288147,
+    "rss_start_mb": 577.1484375,
+    "rss_end_mb": 596.97265625,
+    "rss_peak_mb": 596.97265625,
+    "rss_delta_mb": 19.82421875
+  },
+  "symmetrize_stage": {
+    "stage": "symmetrize_deduplicate",
+    "seconds": 0.11358559969812632,
+    "rss_start_mb": 596.97265625,
+    "rss_end_mb": 616.34765625,
+    "rss_peak_mb": 652.140625,
+    "rss_delta_mb": 19.375
+  },
+  "csr_stage": {
+    "stage": "build_full_csr",
+    "seconds": 0.03464802913367748,
+    "rss_start_mb": 616.34765625,
+    "rss_end_mb": 664.9921875,
+    "rss_peak_mb": 664.9921875,
+    "rss_delta_mb": 48.64453125
+  }
+}
