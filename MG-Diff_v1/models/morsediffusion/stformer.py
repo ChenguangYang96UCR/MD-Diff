@@ -159,14 +159,28 @@ class STFormerForecasting(nn.Module):
         # generate parameters given diffusion step
         side_info['dpe'] = self.diffusion_encoding(side_info['diffusion_step'])  # B, emd_dim
         # side info encoding: spatial, temporal, external features, and diffusion step  
-        side_info['spe'] = side_info['spe'] + self.spe_wae_layer(side_info['wae'])
-        side_info['spe'], side_info['tpe'] = self.positional_encoding(side_info['spe'], side_info['tpe'])  # B, N, d / B, L, d
+        # side_info['spe'] = side_info['spe'] + self.spe_wae_layer(side_info['wae'])
+        # side_info['spe'], side_info['tpe'] = self.positional_encoding(side_info['spe'], side_info['tpe'])  # B, N, d / B, L, d
+
+        combined_spe = (
+            side_info["spe"]
+            + self.spe_wae_layer(side_info["wae"])
+        )
+
+        combined_spe, encoded_tpe = self.positional_encoding(
+            combined_spe,
+            side_info["tpe"],
+        )
+
+        layer_side_info = dict(side_info)
+        layer_side_info["spe"] = combined_spe
+        layer_side_info["tpe"] = encoded_tpe
 
         # spatial transformer encoding
         encoding = encoder_input
         for layer in self.encoders:
             # encoding = layer(encoding, condition, side_info, input_crit, training)
-            encoding = layer(encoding, condition, side_info, input_crit, training)  # B, N, D
+            encoding = layer(encoding, condition, layer_side_info, input_crit, training)  # B, N, D
         return encoding
 
     def decoding(self, encoding, side_info):

@@ -19,11 +19,89 @@ from .morse_function import (
 )
 import networkx as nx
 
+def sample_random_control(
+    adj,
+    num_critical_edges,
+    num_critical_nodes,
+    num_walk_edges,
+    seed,
+):
+    """Construct a random structural control matched to Morse statistics.
+
+    All sampled edges come from the original graph.
+    """
+    rng = np.random.default_rng(seed)
+
+    adj_np = adj.detach().cpu().numpy()
+    adj_binary = np.logical_or(adj_np > 0, adj_np.T > 0)
+
+    original_edges = [
+        (u, v)
+        for u in range(adj_binary.shape[0])
+        for v in range(u + 1, adj_binary.shape[1])
+        if adj_binary[u, v]
+    ]
+
+    if num_critical_edges > len(original_edges):
+        raise ValueError(
+            f"Requested {num_critical_edges} critical edges, "
+            f"but the graph contains only {len(original_edges)} edges."
+        )
+
+    if num_walk_edges > len(original_edges):
+        raise ValueError(
+            f"Requested {num_walk_edges} walk edges, "
+            f"but the graph contains only {len(original_edges)} edges."
+        )
+
+    crit_indices = rng.choice(
+        len(original_edges),
+        size=num_critical_edges,
+        replace=False,
+    )
+    random_critical_edges = [
+        original_edges[i] for i in crit_indices
+    ]
+
+    # Independently match the number of critical nodes.
+    random_critical_nodes = rng.choice(
+        adj_binary.shape[0],
+        size=num_critical_nodes,
+        replace=False,
+    ).tolist()
+
+    walk_indices = rng.choice(
+        len(original_edges),
+        size=num_walk_edges,
+        replace=False,
+    )
+    random_walk_edges = [
+        original_edges[i] for i in walk_indices
+    ]
+
+    return (
+        random_critical_edges,
+        random_critical_nodes,
+        random_walk_edges,
+    )
+
 class morsediffusionForeModel(BaseModel):
 
     @staticmethod
     def modify_commandline_options(parser, is_train):
-        # modify options for the model
+        parser.add_argument(
+            "--morse_control",
+            type=str,
+            default="morse",
+            choices=["morse", "random"],
+            help="Use the true Morse skeleton or a size-matched random graph control.",
+        )
+        parser.add_argument(
+            "--morse_seed",
+            type=int,
+            default=42,
+            help="Random seed used only to construct the structural control.",
+        )
         return parser
 
     def __init__(self, opt, model_config):
@@ -131,40 +209,79 @@ class morsediffusionForeModel(BaseModel):
             # cover_walk = critical_covering_walk_high_to_low(G, crit, f_attr)
             cover_walk = get_critical_path(results)
 
-            input_crit = torch.zeros((num_nodes, 1), dtype = torch.float32) # [N, 1]
-            for v in crit_nodes:
-                input_crit[int(v), 0] = 1.0
-            input_crit = input_crit.unsqueeze(0)
-            input_crit = input_crit.expand(batch_size, -1, -1) # [B, N, 1]
-            self.input_crit = input_crit.to(self.device)
+            true_walk_edges = set()
 
-            Edge_crit = torch.zeros((num_nodes, num_nodes), dtype = torch.float32)
-            for (u, v) in crit_edges:
-                u = int(u)
-                v = int(v)
+            for cell in cover_walk:
+                if isinstance(cell, tuple) and len(cell) == 2:
+                    u, v = int(cell[0]), int(cell[1])
+                    true_walk_edges.add(canon_edge(u, v))
+
+            true_walk_edges = sorted(true_walk_edges)
+
+            true_crit_edges = list(crit_edges)
+            true_crit_nodes = list(crit_nodes)
+
+            if self.opt.morse_control == "morse":
+                selected_crit_edges = true_crit_edges
+                selected_crit_nodes = true_crit_nodes
+                selected_walk_edges = true_walk_edges
+
+            elif self.opt.morse_control == "random":
+                (
+                    selected_crit_edges,
+                    selected_crit_nodes,
+                    selected_walk_edges,
+                ) = sample_random_control(
+                    adj=adj,
+                    num_critical_edges=len(true_crit_edges),
+                    num_critical_nodes=len(true_crit_nodes),
+                    num_walk_edges=len(true_walk_edges),
+                    seed=self.opt.morse_seed,
+                )
+
+            else:
+                raise ValueError(
+                    f"Unknown Morse control: {self.opt.morse_control}"
+                )
+
+            # Critical-node indicator
+            input_crit = torch.zeros(
+                (num_nodes, 1),
+                dtype=torch.float32,
+            )
+
+            for v in selected_crit_nodes:
+                input_crit[int(v), 0] = 1.0
+
+            self.input_crit = (
+                input_crit
+                .unsqueeze(0)
+                .expand(batch_size, -1, -1)
+                .to(self.device)
+            )
+
+            # Critical-edge adjacency
+            Edge_crit = torch.zeros(
+                (num_nodes, num_nodes),
+                dtype=torch.float32,
+            )
+
+            for u, v in selected_crit_edges:
+                u, v = int(u), int(v)
                 Edge_crit[u, v] = 1.0
                 Edge_crit[v, u] = 1.0
-            self.Edge_crit = Edge_crit.to(self.device)  # [N, N]
 
-            walk_nodes = set()
-            walk_edges = set()
+            self.Edge_crit = Edge_crit.to(self.device)
 
-            for c in cover_walk:
-                if isinstance(c, tuple) and len(c) == 2:
-                    print(f'################# cover walk: {c}')
-                    u, v = int(c[0]), int(c[1])
-                    e = canon_edge(u, v)
-                    walk_edges.add(e)
-                    walk_nodes.add(u)
-                    walk_nodes.add(v)
-                else:
-                    walk_nodes.add(int(c))
-            G_walk = nx.Graph()
-            G_walk.add_nodes_from(sorted(walk_nodes))
-            G_walk.add_edges_from(sorted(walk_edges))
+            # Skeleton/walk adjacency
+            adj_walk = torch.zeros(
+                (num_nodes, num_nodes),
+                dtype=torch.float32,
+                device=self.device,
+            )
 
-            adj_walk = torch.zeros((num_nodes, num_nodes), dtype=torch.float32, device=self.device)
-            for (u, v) in walk_edges:
+            for u, v in selected_walk_edges:
+                u, v = int(u), int(v)
                 adj_walk[u, v] = 1.0
                 adj_walk[v, u] = 1.0
 
@@ -184,7 +301,23 @@ class morsediffusionForeModel(BaseModel):
             assert self.t_his == self.opt.t_len - self.t_his
 
             adj_walk_max = torch.maximum(adj_walk, adj_walk.t()).detach().cpu().numpy()
-            self.walk_enc = laplacian_positional_encoding(adj_walk_max, self.pos_dim)
+            adj_walk_np = adj_walk.detach().cpu().numpy()
+
+            self.walk_enc = laplacian_positional_encoding(
+                adj_walk_np,
+                self.pos_dim,
+            )
+
+            print(
+                "[Morse control]",
+                {
+                    "mode": self.opt.morse_control,
+                    "morse_seed": self.opt.morse_seed,
+                    "num_critical_nodes": len(selected_crit_nodes),
+                    "num_critical_edges": len(selected_crit_edges),
+                    "num_walk_edges": len(selected_walk_edges),
+                },
+            )
         ####################
 
         if self.opt.phase == 'train':

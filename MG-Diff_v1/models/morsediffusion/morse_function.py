@@ -236,8 +236,26 @@ def build_sbm_with_degree_valid_dmf_greedy_pair(
     pair_rate=0.2,
 ):
     rnd = random.Random(seed)
+    G_adj = np.asarray(G_adj).copy()
+
+    # Remove diagonal entries before constructing the graph.
+    np.fill_diagonal(G_adj, 0)
+
+    # The Morse implementation operates on an undirected graph.
+    G_adj = np.logical_or(
+        G_adj > 0,
+        G_adj.T > 0,
+    ).astype(np.float32)
+
     G = nx.from_numpy_array(G_adj)
-    G = nx.convert_node_labels_to_integers(G, first_label=0)
+    G.remove_edges_from(nx.selfloop_edges(G))
+
+    G = nx.convert_node_labels_to_integers(
+        G,
+        first_label=0,
+    )
+
+    assert nx.number_of_selfloops(G) == 0
 
     # node values: degree + tie-breaker
     nodes = list(G.nodes())
@@ -411,7 +429,17 @@ def build_clique_complex(G, max_dimension=2):
 
     # 1-simplices (edges)
     for u, v in G.edges():
-        complex_dict[1].append(frozenset([u, v]))
+        if u == v:
+            continue
+
+        complex_dict[1].append(
+            frozenset([u, v])
+        )
+
+    assert all(
+        len(edge) == 2
+        for edge in complex_dict[1]
+    )
 
     # # Higher-dimensional cliques
     cliques = list(nx.find_cliques(G))
@@ -782,92 +810,125 @@ def find_between_criticals(start, end, results, *, mode="pairing", enforce_f=Tru
 
 
 def get_critical_path(results):
+    """Return the union of graph edges on valid gradient paths.
+
+    Returns
+    -------
+    list[tuple[int, int]]
+        Deduplicated undirected graph edges belonging to at least one
+        valid gradient path between critical 0- or 1-cells.
+    """
+
     def cell_path_to_graph_edges(path):
-        """
-        Convert a simplex (cell) path (list of frozensets) into a list of graph edges (u,v).
-        Strategy: keep every 1-simplex (len==2) encountered, in order, dedup consecutive.
-        """
+        """Extract every 1-simplex from a cell path."""
         edges = []
-        last = None
-        for s in path:
-            if not isinstance(s, frozenset):
-                s = frozenset(s)
-            if len(s) == 2:
-                u, v = tuple(sorted(s))
-                e = (u, v)
-                if e != last:
-                    edges.append(e)
-                    last = e
+
+        for simplex in path:
+            simplex = (
+                simplex
+                if isinstance(simplex, frozenset)
+                else frozenset(simplex)
+            )
+
+            if len(simplex) == 2:
+                u, v = sorted(simplex)
+                edges.append((int(u), int(v)))
+
         return edges
 
-    def _as_fs(x):
-        return x if isinstance(x, frozenset) else frozenset(x)
+    def _as_fs(cell):
+        return (
+            cell
+            if isinstance(cell, frozenset)
+            else frozenset(cell)
+        )
 
-    def _dim(s):
-        return len(s) - 1
+    def _dim(cell):
+        return len(cell) - 1
 
-    def _fmt(s):
-        return str(sorted(list(s)))
-    
-    criticals = [_as_fs(s) for s, crit in results["IsCritical"].items() if crit]
-    # print(f'############################ criticals is {criticals}')
+    criticals = [
+        _as_fs(simplex)
+        for simplex, is_critical
+        in results["IsCritical"].items()
+        if is_critical
+    ]
 
-    # --- print criticals grouped by dimension ---
-    by_dim = {}
-    for s in criticals:
-        by_dim.setdefault(_dim(s), []).append(s)
+    # Use a set because the same graph edge may occur in many paths.
+    skeleton_edges = set()
+    successful_pairs = 0
 
-    for d in sorted(by_dim):
-        cells = sorted(by_dim[d], key=lambda x: (len(x), sorted(list(x))))
-        for s in cells:
-            print(f"  • {_fmt(s)}")
-
-    # --- find & print all working paths ---
-    working = []
-
-    # prefer your existing helper if it exists
-    _have_find_between = "find_between_criticals" in globals()
+    have_find_between = (
+        "find_between_criticals" in globals()
+    )
 
     for a, b in combinations(criticals, 2):
-        if _have_find_between:
+        # This implementation only constructs a graph skeleton
+        # between critical vertices and critical edges.
+        if len(a) > 2 or len(b) > 2:
+            continue
+
+        if have_find_between:
             path, length = find_between_criticals(
-                a, b, results,
-                mode="pairing", enforce_f=True, eps=0.0
+                a,
+                b,
+                results,
+                mode="pairing",
+                enforce_f=True,
+                eps=0.0,
             )
+
         else:
-            # fallback: use your incidence path finder directly with direction flip
-            ds, de = _dim(a), _dim(b)
-            if ds < de:
+            dim_a = _dim(a)
+            dim_b = _dim(b)
+
+            if dim_a < dim_b:
                 path, length = find_gradient_incidence_path(
-                    b, a,
+                    b,
+                    a,
                     complex_dict=results["complex"],
                     paired_with=results["paired_with"],
                     f=results["morse_function"],
-                    max_dimension=max(results["complex"].keys()),
-                    mode="pairing", enforce_f=True, eps=0.0
+                    max_dimension=max(
+                        results["complex"].keys()
+                    ),
+                    mode="pairing",
+                    enforce_f=True,
+                    eps=0.0,
                 )
+
                 if path:
                     path = list(reversed(path))
+
             else:
                 path, length = find_gradient_incidence_path(
-                    a, b,
+                    a,
+                    b,
                     complex_dict=results["complex"],
                     paired_with=results["paired_with"],
                     f=results["morse_function"],
-                    max_dimension=max(results["complex"].keys()),
-                    mode="pairing", enforce_f=True, eps=0.0
+                    max_dimension=max(
+                        results["complex"].keys()
+                    ),
+                    mode="pairing",
+                    enforce_f=True,
+                    eps=0.0,
                 )
 
-        if path and len(a) <= 2 and len(b) <= 2:
-            # working.append((a, b, path, length))
-            working.append((a, b))
-    # if not working:
-    #     print("No working gradient-respecting paths found (mode='pairing').")
-    #     print("Tip: try mode='relaxed' in the cell above if you want a diagnostic connectivity check.")
-    # else:
-    #     for a, b, path, length in working:
-    #         print(f"{_fmt(a)} (dim{_dim(a)}) → {_fmt(b)} (dim{_dim(b)})  ✓  length={length}")
-    #         print("  Path:", " → ".join(_fmt(s) for s in path))
+        if path:
+            successful_pairs += 1
 
-    # print(f"\nSummary: {len(working)}/{len(criticals)*(len(criticals)-1)//2} critical pairs have paths.")
-    return working
+            path_edges = cell_path_to_graph_edges(path)
+            skeleton_edges.update(path_edges)
+
+    skeleton_edges = sorted(skeleton_edges)
+
+    print(
+        "[Morse skeleton]",
+        {
+            "critical_cells": len(criticals),
+            "successful_critical_pairs": successful_pairs,
+            "skeleton_edges": len(skeleton_edges),
+        },
+    )
+
+    return skeleton_edges

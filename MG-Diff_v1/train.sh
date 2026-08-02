@@ -7,8 +7,9 @@ config=$6
 batch=$7
 gpu_ids=$8
 seed=$9
+morse_control=${10}
 
-for ((i=0; i<=0; i++))
+for ((i=0; i<=2; i++))
 do
 python train.py --model ${model}\
   --dataset_mode ${dataset}\
@@ -23,5 +24,7 @@ python train.py --model ${model}\
   --eval_epoch_freq 5\
   --num_train_target 3\
   --num_threads 4\
+  --morse_control ${morse_control} \
+  --morse_seed $((${seed}+${i})) \
   --batch_size ${batch}
 done

@@ -129,6 +129,44 @@ nohup python train.py \
   --batch_size 64 \
 > logs/train_morsediffusionfore_PEMS03.out  &
 
+nohup python train.py \
+  --model morsediffusionfore \
+  --dataset_mode PEMS03 \
+  --pred_attr NA \
+  --enable_val \
+  --gpu_ids 2 \
+  --config config_PEMS03 \
+  --pretrain gwavenet_NA_20260108T035504 \
+  --save_best \
+  --t_len 24 \
+  --seed 2030 \
+  --morse_control morse \
+  --morse_seed 42 \
+  --eval_epoch_freq 5 \
+  --num_train_target 3 \
+  --num_threads 4 \
+  --batch_size 64 \
+  > logs/train_PEMS03_morse_seed2030.out 2>&1 &
+
+nohup python train.py \
+  --model morsediffusionfore \
+  --dataset_mode PEMS03 \
+  --pred_attr NA \
+  --enable_val \
+  --gpu_ids 2 \
+  --config config_PEMS03 \
+  --pretrain gwavenet_NA_20260108T035504 \
+  --save_best \
+  --t_len 24 \
+  --seed 2030 \
+  --morse_control random \
+  --morse_seed 42 \
+  --eval_epoch_freq 5 \
+  --num_train_target 3 \
+  --num_threads 4 \
+  --batch_size 64 \
+  > logs/train_PEMS03_random_seed2030.out 2>&1 &
+
 ```
 
 
@@ -163,11 +201,32 @@ nohup python train.py \
   --save_best \
   --t_len 24 \
   --seed 2030 \
+  --morse_control morse \
+  --morse_seed 42 \
   --eval_epoch_freq 5 \
   --num_train_target 3 \
   --num_threads 4 \
   --batch_size 64 \
-> logs/train_morsediffusionfore_BJAir.out  &
+  > logs/train_BJAir_morse_seed2030.out 2>&1 &
+
+nohup python train.py \
+  --model morsediffusionfore \
+  --dataset_mode BJAir \
+  --pred_attr PM25 \
+  --enable_val \
+  --gpu_ids 1 \
+  --config config_BJAir \
+  --pretrain gwavenet_PM25_20260724T143731 \
+  --save_best \
+  --t_len 24 \
+  --seed 2030 \
+  --morse_control random \
+  --morse_seed 42 \
+  --eval_epoch_freq 5 \
+  --num_train_target 3 \
+  --num_threads 4 \
+  --batch_size 64 \
+  > logs/train_BJAir_random_seed2030.out 2>&1 &
 
 ```
 
@@ -197,9 +256,9 @@ nohup python train.py \
   --dataset_mode GZAir \
   --pred_attr PM25 \
   --enable_val \
-  --gpu_ids 2 \
+  --gpu_ids 3 \
   --config config_GZAir \
-  --pretrain gwavenet_PM25_20260124T080921 \
+  --pretrain gwavenet_PM25_20260725T075728 \
   --save_best \
   --t_len 24 \
   --seed 2030 \
@@ -208,6 +267,44 @@ nohup python train.py \
   --num_threads 4 \
   --batch_size 64 \
 > logs/train_smorsediffusionfore_GZAir.out  &
+
+nohup python train.py \
+  --model morsediffusionfore \
+  --dataset_mode GZAir \
+  --pred_attr PM25 \
+  --enable_val \
+  --gpu_ids 1 \
+  --config config_GZAir \
+  --pretrain gwavenet_PM25_20260725T075728 \
+  --save_best \
+  --t_len 24 \
+  --seed 2030 \
+  --morse_control morse \
+  --morse_seed 42 \
+  --eval_epoch_freq 5 \
+  --num_train_target 3 \
+  --num_threads 4 \
+  --batch_size 64 \
+  > logs/train_GZAir_morse_seed2030.out 2>&1 &
+
+nohup python train.py \
+  --model morsediffusionfore \
+  --dataset_mode GZAir \
+  --pred_attr PM25 \
+  --enable_val \
+  --gpu_ids 1 \
+  --config config_GZAir \
+  --pretrain gwavenet_PM25_20260725T075728 \
+  --save_best \
+  --t_len 24 \
+  --seed 2030 \
+  --morse_control random \
+  --morse_seed 42 \
+  --eval_epoch_freq 5 \
+  --num_train_target 3 \
+  --num_threads 4 \
+  --batch_size 64 \
+  > logs/train_GZAir_random_seed2030.out 2>&1 &
 
 ```
 
@@ -247,5 +344,19 @@ nohup python train.py \
   --num_threads 4 \
   --batch_size 64 \
 > logs/train_morsediffusionfore_PEMSBAY.out  &
+
+```
+
+
+## check the critical path ratio of whole graph edge
+
+```bash
+nohup python analyze_morse_variants.py \
+  --datasets PEMS03 PEMSBAY BJAir GZAir \
+  --score_modes inverse_degree degree pagerank betweenness \
+  --morse_seed 42 \
+  --max_dimension 2 \
+  --output morse_variant_results.csv \
+  > logs/analyze_all_morse_variants.out 2>&1 &
 
 ```
